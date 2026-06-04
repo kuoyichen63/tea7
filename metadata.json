@@ -1,0 +1,6 @@
+{
+  "name": "茶飲點單系統",
+  "description": "即時同步茶飲點餐與庫存管理系統，支援自選冰度甜度、訂單進度即時推播、以及安全後台管理功能。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
