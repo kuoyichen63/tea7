@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "Drink": {
+      "title": "Drink",
+      "description": "A beverage available in the inventory.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "priceM": {
+          "type": "number"
+        },
+        "priceL": {
+          "type": "number"
+        },
+        "stock": {
+          "type": "number"
+        },
+        "category": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "priceL",
+        "stock",
+        "category"
+      ]
+    },
+    "CartItem": {
+      "title": "CartItem",
+      "description": "An item inside a customer order.",
+      "type": "object",
+      "properties": {
+        "drinkId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "ice": {
+          "type": "string"
+        },
+        "sweetness": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "unitPrice": {
+          "type": "number"
+        },
+        "totalPrice": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "drinkId",
+        "name",
+        "size",
+        "ice",
+        "sweetness",
+        "quantity",
+        "unitPrice",
+        "totalPrice"
+      ]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order with details and real-time status tracker.",
+      "type": "object",
+      "properties": {
+        "orderNumber": {
+          "type": "string"
+        },
+        "customerName": {
+          "type": "string"
+        },
+        "customerPhone": {
+          "type": "string"
+        },
+        "customerNote": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array"
+        },
+        "totalAmount": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "orderNumber",
+        "customerName",
+        "customerPhone",
+        "items",
+        "totalAmount",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminConfig": {
+      "title": "AdminConfig",
+      "description": "Admin configuration and credentials.",
+      "type": "object",
+      "properties": {
+        "passwordHash": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "passwordHash"
+      ]
+    }
+  },
+  "firestore": {
+    "drink_inventory": {
+      "schema": "Drink",
+      "description": "Real-time sync of beverage inventory and stock levels."
+    },
+    "orders": {
+      "schema": "Order",
+      "description": "Logs of customer orders and real-time status."
+    },
+    "admin_config": {
+      "schema": "AdminConfig",
+      "description": "Admin settings and authorization config."
+    }
+  }
+}
