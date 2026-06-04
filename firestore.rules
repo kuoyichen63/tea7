@@ -1,0 +1,154 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- SHARED REUSABLE UTILITY PRIMITIVES ---
+
+    // Path Variable Hardening (ID Poisoning Guard)
+    function isValidId(id) {
+      return id is string 
+        && id.size() <= 128 
+        && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- SCHEMA VALIDATION BLUEPRINTS ---
+
+    // Drink Entity Verification
+    function isValidDrink(data) {
+      return data.id is string 
+        && data.id.size() <= 128
+        && data.id.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.name is string 
+        && data.name.size() <= 100
+        && data.priceL is number 
+        && data.priceL >= 0
+        && data.stock is number 
+        && data.stock >= 0
+        && data.category is string 
+        && data.category.size() <= 50
+        && (
+          !data.keys().hasAll(['priceM']) 
+          || data.priceM == null 
+          || (data.priceM is number && data.priceM >= 0)
+        );
+    }
+
+    // Order Entity Verification
+    function isValidOrder(data) {
+      return data.orderNumber is string 
+        && data.orderNumber.size() <= 10
+        && data.customerName is string 
+        && data.customerName.size() <= 100
+        && data.customerPhone is string 
+        && data.customerPhone.size() <= 20
+        && data.items is list
+        && data.items.size() > 0
+        && data.items.size() <= 100
+        // Total Array Guarding: constraint list contents
+        && data.items[0] is map
+        && data.totalAmount is number 
+        && data.totalAmount >= 0
+        && data.status is string 
+        && (
+          data.status == 'pending' 
+          || data.status == 'preparing' 
+          || data.status == 'completed' 
+          || data.status == 'cancelled'
+        )
+        && data.createdAt is number
+        && data.updatedAt is number
+        && (
+          !data.keys().hasAll(['customerNote'])
+          || data.customerNote is string
+          || data.customerNote == null
+        );
+    }
+
+    // Admin Config Verification
+    function isValidAdminConfig(data) {
+      return data.keys().hasAll(['passwordHash'])
+        && data.keys().size() == 1
+        && data.passwordHash is string
+        && data.passwordHash.size() <= 128;
+    }
+
+    // --- COLLECTION RULE MATCHERS ---
+
+    // 1. Drink Inventory
+    match /drink_inventory/{drinkId} {
+      allow read: if true;
+      
+      // Strict keys matching on creation
+      allow create: if isValidId(drinkId)
+        && isValidDrink(incoming())
+        && incoming().keys().hasAll(['id', 'name', 'priceL', 'stock', 'category'])
+        && (
+          incoming().keys().size() == 5 
+          || (incoming().keys().size() == 6 && incoming().keys().hasAll(['priceM']))
+        );
+        
+      // Restrict customers/admins updates strictly to stock adjustments
+      allow update: if isValidId(drinkId)
+        && isValidDrink(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['stock']);
+        
+      allow delete: if false;
+    }
+
+    // 2. Orders Log
+    match /orders/{orderId} {
+      allow read: if true;
+      
+      // Strict keys matching on creation - must start with pending status
+      allow create: if isValidId(orderId)
+        && isValidOrder(incoming())
+        && incoming().status == 'pending'
+        && incoming().keys().hasAll(['orderNumber', 'customerName', 'customerPhone', 'items', 'totalAmount', 'status', 'createdAt', 'updatedAt'])
+        && (
+          incoming().keys().size() == 8
+          || (incoming().keys().size() == 9 && incoming().keys().hasAll(['customerNote']))
+        );
+
+      // Status State Machine Transition & Terminal State Locking
+      allow update: if isValidId(orderId)
+        && isValidOrder(incoming())
+        && existing().status != 'completed'
+        && existing().status != 'cancelled'
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && (
+          (existing().status == 'pending' && incoming().status == 'preparing')
+          || (existing().status == 'preparing' && incoming().status == 'completed')
+          || (incoming().status == 'cancelled')
+        );
+        
+      allow delete: if false;
+    }
+
+    // 3. Admin Credentials Config Document
+    match /admin_config/{configId} {
+      allow read: if true;
+      
+      // Credentials document can only be registered once and fits exact schema
+      allow create: if isValidId(configId)
+        && configId == 'credentials'
+        && isValidAdminConfig(incoming())
+        && !exists(/databases/$(database)/documents/admin_config/credentials);
+        
+      allow update, delete: if false;
+    }
+
+  }
+}
